@@ -1,0 +1,133 @@
+[
+    {
+        "id": "3fddb9ac.cb1726",
+        "type": "http in",
+        "z": "c4491207.7a7bc",
+        "name": "",
+        "url": "/speech",
+        "method": "get",
+        "swaggerDoc": "",
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "9d3659e5.d14998"
+            ]
+        ]
+    },
+    {
+        "id": "9d3659e5.d14998",
+        "type": "template",
+        "z": "c4491207.7a7bc",
+        "name": "html",
+        "field": "payload",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "<head>\n  <meta name=\"viewport\" content=\"width=320, initial-scale=1\">\n  <title>speech!</title>\n</head>\n\n<body>\n  <div id=\"wrapper\">\n    <div id=\"chat_box\" class=\"content\">\n            <p><audio controls id=\"audio\"></audio></p>\n    </div>\n\n    <div id=\"footer\">\n      <div class=\"content\">\n        <input type=\"text\" id=\"user\" placeholder=\"Who are you?\" />\n        <input type=\"text\" id=\"message\" placeholder=\"What do you want to say?\" />\n        <input type=\"button\" id=\"send_btn\" value=\"Send\" onclick=\"sendMessage()\">\n      </div>\n    </div>\n  </div>\n</body>\n\n<script type=\"text/javascript\">\n  var wsUri = \"wss://{{req.headers.host}}/ws/english\";\n  var ws = new WebSocket(wsUri);\n\n  function createSystemMessage(message) {\n    var message = document.createTextNode(message);\n\n    var messageBox = document.createElement('p');\n    messageBox.className = 'system';\n\n    messageBox.appendChild(message);\n\n    var chat = document.getElementById('chat_box');\n    chat.appendChild(messageBox);\n  }\n\n  function createUserMessage(user, message) {\n    var user = document.createTextNode(user + ': ');\n\n    var userBox = document.createElement('span');\n    userBox.className = 'username';\n    userBox.appendChild(user);\n\n    var message = document.createTextNode(message);\n\n    var messageBox = document.createElement('p');\n    messageBox.appendChild(userBox);\n    messageBox.appendChild(message);\n\n    var chat = document.getElementById('chat_box');\n    chat.appendChild(messageBox);\n  }\n\n  function playTTS(payload){\n    var wavString = payload.speech.data;\n    // console.log(wavString);\n    var len = wavString.length;\n    // console.log(len);\n    var buf = new ArrayBuffer(len);\n    // console.log(buf);\n    var view = new Uint8Array(buf);\n    for (var i = 0; i < len; i++) {\n      view[i] = wavString[i] & 0xff;\n    }\n    console.log(view);\n    var blob = new Blob([view], {type: \"audio/wav\"});\n    var URL = window.URL || window.webkitURL\n    var blobUrl = URL.createObjectURL(blob);\n    // console.log(blobUrl);\n    var audio = document.getElementById('audio');\n    audio.src = blobUrl;\n    audio.load();\n    audio.preload = 'auto';\n    audio.play();\n  }\n\n  ws.onopen = function(ev) {\n    createSystemMessage('[Connected]');\n  };\n\n  ws.onclose = function(ev) {\n    createSystemMessage('[Disconnected]');\n  }\n\n  ws.onmessage = function(ev) {\n    var payload = JSON.parse(ev.data);\n    createUserMessage(payload.user, payload.message);\n    playTTS(payload);\n\n    var chat = document.getElementById('chat_box');\n    chat.scrollTop = chat.scrollHeight;\n  }\n\n  function sendMessage() {\n    var user = document.getElementById('user');\n    var message = document.getElementById('message');\n\n    var payload = {\n      message: message.value,\n      user: user.value,\n      ts: (new Date()).getTime(),\n      payload: message.value\n    };\n\n    ws.send(JSON.stringify(payload));\n    message.value = \"\";\n  };\n</script>\n\n<style type=\"text/css\">\n  * {\n    font-family: \"Palatino Linotype\", \"Book Antiqua\", Palatino, serif;\n    font-style: italic;\n    font-size: 24px;\n  }\n\n  html, body, #wrapper {\n    margin: 0;\n    padding: 0;\n    height: 100%;\n  }\n\n  #wrapper {\n    background-color: #ecf0f1;\n  }\n\n  #chat_box {\n    box-sizing: border-box;\n    height: 100%;\n    overflow: auto;\n    padding-bottom: 50px;\n  }\n\n  #footer {\n    box-sizing: border-box;\n    position: fixed;\n    bottom: 0;\n    height: 50px;\n    width: 100%;\n    background-color: #2980b9;\n  }\n\n  #footer .content {\n    padding-top: 4px;\n    position: relative;\n  }\n\n  #user { width: 20%; }\n  #message { width: 68%; }\n  #send_btn {\n    width: 10%;\n    position: absolute;\n    right: 0;\n    bottom: 0;\n    margin: 0;\n  }\n\n  .content {\n    width: 70%;\n    margin: 0 auto;\n  }\n\n  input[type=\"text\"],\n  input[type=\"button\"] {\n    border: 0;\n    color: #fff;\n  }\n\n  input[type=\"text\"] {\n    background-color: #146EA8;\n    padding: 3px 10px;\n  }\n\n  input[type=\"button\"] {\n    background-color: #f39c12;\n    border-right: 2px solid #e67e22;\n    border-bottom: 2px solid #e67e22;\n    min-width: 70px;\n    display: inline-block;\n  }\n\n  input[type=\"button\"]:hover {\n    background-color: #e67e22;\n    border-right: 2px solid #f39c12;\n    border-bottom: 2px solid #f39c12;\n    cursor: pointer;\n  }\n\n  .system,\n  .username {\n    color: #aaa;\n    font-style: italic;\n    font-family: monospace;\n    font-size: 16px;\n  }\n\n  @media(max-width: 1000px) {\n    .content { width: 90%; }\n  }\n\n  @media(max-width: 780px) {\n    #footer { height: 91px; }\n    #chat_box { padding-bottom: 91px; }\n\n    #user { width: 100%; }\n    #message { width: 80%; }\n  }\n\n  @media(max-width: 400px) {\n    #footer { height: 135px; }\n    #chat_box { padding-bottom: 135px; }\n\n    #message { width: 100%; }\n    #send_btn {\n      position: relative;\n      margin-top: 3px;\n      width: 100%;\n    }\n  }\n</style>\n",
+        "x": 339,
+        "y": 159,
+        "wires": [
+            [
+                "cd491719.d422b8"
+            ]
+        ]
+    },
+    {
+        "id": "cd491719.d422b8",
+        "type": "http response",
+        "z": "c4491207.7a7bc",
+        "name": "",
+        "x": 521,
+        "y": 159,
+        "wires": []
+    },
+    {
+        "id": "dd2e0c59.3f8a4",
+        "type": "websocket in",
+        "z": "c4491207.7a7bc",
+        "name": "",
+        "server": "2d958886.63c058",
+        "client": "",
+        "x": 101,
+        "y": 68,
+        "wires": [
+            [
+                "c540a8a9.cc9fb8"
+            ]
+        ]
+    },
+    {
+        "id": "c540a8a9.cc9fb8",
+        "type": "function",
+        "z": "c4491207.7a7bc",
+        "name": "",
+        "func": "delete msg._session;\n//msg.payload = msg.message;\nreturn msg;\n\n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 265,
+        "y": 68,
+        "wires": [
+            [
+                "2daae731.477d98"
+            ]
+        ]
+    },
+    {
+        "id": "5a14111b.763db",
+        "type": "websocket out",
+        "z": "c4491207.7a7bc",
+        "name": "",
+        "server": "2d958886.63c058",
+        "client": "",
+        "x": 651,
+        "y": 69,
+        "wires": []
+    },
+    {
+        "id": "2daae731.477d98",
+        "type": "watson-text-to-speech",
+        "z": "c4491207.7a7bc",
+        "name": "",
+        "lang": "ja-JP",
+        "langhidden": "ja-JP",
+        "langcustom": "NoCustomisationSetting",
+        "langcustomhidden": "",
+        "voice": "ja-JP_EmiVoice",
+        "voicehidden": "",
+        "format": "audio/wav",
+        "password": "y6R2sBdz5do2",
+        "apikey": "",
+        "payload-response": false,
+        "default-endpoint": false,
+        "service-endpoint": "https://stream.watsonplatform.net/text-to-speech/api",
+        "x": 446,
+        "y": 69,
+        "wires": [
+            [
+                "5a14111b.763db",
+                "ac8e0b16.9f8dd8"
+            ]
+        ]
+    },
+    {
+        "id": "ac8e0b16.9f8dd8",
+        "type": "debug",
+        "z": "c4491207.7a7bc",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "complete": "true",
+        "x": 645,
+        "y": 15,
+        "wires": []
+    },
+    {
+        "id": "2d958886.63c058",
+        "type": "websocket-listener",
+        "z": "c4491207.7a7bc",
+        "path": "/ws/english",
+        "wholemsg": "true"
+    }
+]
